@@ -1,6 +1,7 @@
 import React from "react";
 import {Form} from "./Form";
 import './index.css';
+import { useEffect, useState } from "react";
 
 function App() {
 
@@ -11,22 +12,46 @@ function App() {
   const [toCurrency, setToCurrency] = React.useState('UAH');
   const [fromPrice, setFromPrice] = React.useState(1);
   const [toPrice, setToPrice] = React.useState(0);
- // const [rates, setRates] = React.useState({});
- const ratesRef = React.useRef({});
+  const ratesRef = React.useRef({});
 
-  React.useEffect(() => {
-    fetch('https://cdn.cur.su/api/latest.json')
-    .then((res) => res.json())
-    .then((json) => {
-      //setRates(json.rates);
-      ratesRef.current = json.rates;
-      onChangeFromPrice(1);
-    })
-    .catch((err) =>{
-    console.warn(err);
-    alert('Данные не загрузились. Проверьте подключение к сети.')
-    });
-  }, []);
+
+
+  const useAPI = (url) => {
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(null);
+  
+    const fetchAPI = () => {
+      fetch(url)
+        .then((res) => {
+          return res.json();
+        })
+        .then((json) => {
+          ratesRef.current = json.rates;
+          onChangeFromPrice(1);
+          setLoading(false);
+          setData(json);
+        })
+        .catch((err) =>{
+          console.warn(err);
+          alert('Данные не загрузились. Проверьте подключение к сети.')
+          });
+        
+    };
+  
+    useEffect(() => {
+      fetchAPI();
+    }, []);
+  
+    return { loading, data };
+  };
+
+
+
+ const { loading, data } = useAPI(
+  "https://cdn.cur.su/api/latest.json"
+  );
+
+
 
 const onChangeFromPrice = (value) => {
   const price = value / ratesRef.current[fromCurrency];
@@ -48,6 +73,8 @@ React.useEffect(() => {
 React.useEffect(() => {
   onChangeToPrice(toPrice);
 }, [toCurrency]);
+
+if (loading) return <h1>Loading</h1>;
 
   return (
     <div className="App">
