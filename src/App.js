@@ -1,91 +1,79 @@
 import React from "react";
-import {Form} from "./Form";
-import './index.css';
-import { useEffect, useState } from "react";
-
-function App() {
-
-  const [EURCurrency] = React.useState('EUR');
-  const [UAHCurrency] = React.useState('UAH');
-  const [USDCurrency] = React.useState('USD');
-  const [fromCurrency, setFromCurrency] = React.useState('UAH');
-  const [toCurrency, setToCurrency] = React.useState('UAH');
-  const [fromPrice, setFromPrice] = React.useState(1);
-  const [toPrice, setToPrice] = React.useState(0);
-  const ratesRef = React.useRef({});
+import PeopleAPI from "./Components/PeopleAPI.js";
+import Map from "./Components/Map.js";
+import Data from "./Components/Data.js";
+import "./index.css"
 
 
-
-  const useAPI = (url) => {
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState(null);
-  
-    const fetchAPI = () => {
-      fetch(url)
-        .then((res) => {
-          return res.json();
-        })
-        .then((json) => {
-          ratesRef.current = json.rates;
-          onChangeFromPrice(1);
-          setLoading(false);
-          setData(json);
-        })
-        .catch((err) =>{
-          console.warn(err);
-          alert('Данные не загрузились. Проверьте подключение к сети.')
-          });
-        
+class API extends React.Component {
+  constructor() {
+    super();
+    this.state = {
+      error: null,
+      isLoaded: false,
+      iss_position: []
     };
-  
-    useEffect(() => {
-      fetchAPI();
-    }, []);
-  
-    return { loading, data };
-  };
+  }
 
+  componentDidMount() {
+    setInterval(() => {
+      fetch("http://api.open-notify.org/iss-now.json")
+        .then(res => res.json())
+        .then(
+          (result) => {
+            this.setState({
+              isLoaded: true,
+              iss_position: result.iss_position
+            });
+          },
+          (error) => {
+            this.setState({
+              isLoaded: true,
+              error
+            });
+          }
+        )
+    }, 5000);
+  }
 
+  render() {
 
- const { loading, data } = useAPI(
-  "https://cdn.cur.su/api/latest.json"
-  );
+    const { error, isLoaded, iss_position } = this.state;
+    let latitude = iss_position.latitude;
+    let longitude = iss_position.longitude;
 
+    const coordinate = [
+      {
+        lat: +iss_position.latitude,
+        lng: +iss_position.longitude,
+      }
+    ]
 
+    if (error) {
+      return <div>Ошибка: {error.message}</div>;
+    } else if (!isLoaded) {
+      return <div>Загрузка...</div>;
+    } else {
+      return (
 
-const onChangeFromPrice = (value) => {
-  const price = value / ratesRef.current[fromCurrency];
-  const result = price * ratesRef.current[toCurrency];
-  setToPrice(result.toFixed(2));
-  setFromPrice(value);
+        <div className="d-flex">
+        <div className="mright">
+            <div className="container">
+              <p className="fweight">ISS is now lockated at:</p>
+              <p className="fitalic">latitude: {latitude} longitude: {longitude}</p>
+            </div>          
+              <Map lat={coordinate[0].lat} lng={coordinate[0].lng} /> 
+          </div>
+              
+            <div>
+              <Data />
+              <PeopleAPI />
+            </div>      
+
+        </div>
+      );
+    }
+  }
 }
+export default API;
 
-const onChangeToPrice = (value) => {
-  const result = (ratesRef.current[fromCurrency] / ratesRef.current[toCurrency]) * value;
-  setFromPrice(result.toFixed(2)); 
-  setToPrice(value);
-}
-
-React.useEffect(() => {
-  onChangeFromPrice(fromPrice);
-}, [fromCurrency]);
-
-React.useEffect(() => {
-  onChangeToPrice(toPrice);
-}, [toCurrency]);
-
-if (loading) return <h1>Loading</h1>;
-
-  return (
-    <div className="App">
-      <div className="header">
-        <h4> {Math.round(ratesRef.current[UAHCurrency]*ratesRef.current[USDCurrency]*100)/100} USD </h4>
-        <h4> {Math.round(ratesRef.current[UAHCurrency]*ratesRef.current[EURCurrency]*100)/100} EUR</h4>
-      </div>
-    <Form value={fromPrice} currency={fromCurrency} onChangeCurrency={setFromCurrency} onChangeValue={onChangeFromPrice}/>
-    <Form value={toPrice} currency={toCurrency} onChangeCurrency={setToCurrency} onChangeValue={onChangeToPrice}/>
-    </div>
-);
-}
-
-export default App;
